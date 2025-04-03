@@ -29,6 +29,7 @@ class FragmensteinParserLaboratory:
         combine_parser = subparsers.add_parser('combine', help='combine')
         self.common(combine_parser)
         combine_parser.set_defaults(func=self.lab_combine)
+        
         # place
         place_parser = subparsers.add_parser('place', help='place')
         self.common(place_parser)
@@ -36,6 +37,11 @@ class FragmensteinParserLaboratory:
                                   help='CSV table input file, ' +\
                                        'requires `name`, `smiles` and space-separated-`hit_names`')
         place_parser.set_defaults(func=self.lab_place)
+
+        # sw_search
+        sw_search_parser = subparsers.add_parser('sw_search', help='sw_search')
+        self.common(sw_search_parser)
+        sw_search_parser.set_defaults(func=self.lab_sw_search)
 
     def gather(self, args: argparse.Namespace) -> Tuple[Laboratory, List[Chem.Mol]]:
         set_verbose(args.verbose)
@@ -66,6 +72,23 @@ class FragmensteinParserLaboratory:
         lab, mols = self.gather(args)
         combos: pd.DataFrame = lab.combine(mols, n_cores=args.cores)
         self.write(args, combos)
+
+    def lab_sw_search(self, args: argparse.Namespace) -> str:
+        lab, mols = self.gather(args)
+        
+        analogues: pd.DataFrame = lab.sw_search(
+            combinations, 
+            suffix,
+            sw_dist, 
+            sw_length,
+            sw_db,
+            top_mergers=1_000,
+            ranking=None, 
+            ranking_ascending=None,
+            sws=None,
+        )
+
+        # self.write(args, analogues)
 
     def write(self, args: argparse.Namespace, df: pd.DataFrame):
         props = ['smiles', 'error', '∆∆G', '∆G_bound', '∆G_unbound', 'comRMSD',
