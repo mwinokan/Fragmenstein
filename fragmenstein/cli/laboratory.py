@@ -153,6 +153,8 @@ class FragmensteinParserLaboratory:
 
         merges = PandasTools.LoadSDF(args.input)
 
+        Laboratory.Victor.journal.info(f'Number of input merges: {len(merges)}')
+
         for db in args.sw_databases:
 
             settings = dict(
