@@ -7,40 +7,105 @@ from ..laboratory import Laboratory
 from ..igor import Igor
 from typing import List, Tuple
 
+
 class FragmensteinParserLaboratory:
 
     def common(self, parser: argparse.ArgumentParser):
         # hits in _add_common is for individual mol files
         _add_common(parser, hits=False, output=True, template=True)
-        parser.add_argument('-i', '--input', required=True, help='input sdf file')
-        parser.add_argument('-d', '--out-table', default='output.csv', help='table output file')
-        parser.add_argument('-s', '--sdf-outfile', default='output.sdf', help='sdf output file')
-        parser.add_argument('-c', '--cores', default=1, type=int, help='number of cores to use')
-        parser.add_argument('-p', '--run-plip', default=False, type=bool, help='Run PLIP?')
-        parser.add_argument('--victor',
-                            help='Which victor to use: Victor, OpenVictor or Wictor',
-                            default='Victor')
+        parser.add_argument("-i", "--input", required=True, help="input sdf file")
+        parser.add_argument(
+            "-d", "--out-table", default="output.csv", help="table output file"
+        )
+        parser.add_argument(
+            "-s", "--sdf-outfile", default="output.sdf", help="sdf output file"
+        )
+        parser.add_argument(
+            "-c", "--cores", default=1, type=int, help="number of cores to use"
+        )
+        parser.add_argument(
+            "-p", "--run-plip", default=False, type=bool, help="Run PLIP?"
+        )
+        parser.add_argument(
+            "--victor",
+            help="Which victor to use: Victor, OpenVictor or Wictor",
+            default="Victor",
+        )
 
     def _define_laboratory(self, parser: argparse.ArgumentParser):
         """fragmenstein laboratory combine -i hits.sdf -o out.sdf
-           fragmenstein laboratory place -i hits.sdf -t table.csv -o out.sdf"""
-        subparsers = parser.add_subparsers(title='operation', help='combine or place')
+        fragmenstein laboratory place -i hits.sdf -t table.csv -o out.sdf"""
+        subparsers = parser.add_subparsers(title="operation", help="combine or place")
         # combine
-        combine_parser = subparsers.add_parser('combine', help='combine')
+        combine_parser = subparsers.add_parser("combine", help="combine")
         self.common(combine_parser)
         combine_parser.set_defaults(func=self.lab_combine)
-        
+
         # place
-        place_parser = subparsers.add_parser('place', help='place')
+        place_parser = subparsers.add_parser("place", help="place")
         self.common(place_parser)
-        place_parser.add_argument('-f', '--in-table', required=True,
-                                  help='CSV table input file, ' +\
-                                       'requires `name`, `smiles` and space-separated-`hit_names`')
+        place_parser.add_argument(
+            "-f",
+            "--in-table",
+            required=True,
+            help="CSV table input file, "
+            + "requires `name`, `smiles` and space-separated-`hit_names`",
+        )
         place_parser.set_defaults(func=self.lab_place)
 
         # sw_search
-        sw_search_parser = subparsers.add_parser('sw_search', help='sw_search')
-        self.common(sw_search_parser)
+        sw_search_parser = subparsers.add_parser("sw_search", help="sw_search")
+
+        _add_common(sw_search_parser, hits=False, output=False, template=True)
+
+        from .._cli_defaults import cli_default_settings
+
+        sw_search_parser.add_argument(
+            "-i", "--input", required=True, help="input combinations pickle file"
+        )
+        parser.add_argument(
+            "-d",
+            "--sw_dist",
+            help="SmallWorld distance",
+            default=cli_default_settings["sw_dist"],
+            type=int,
+        )
+        parser.add_argument(
+            "-l",
+            "--sw_length",
+            help="SmallWorld length",
+            default=cli_default_settings["sw_length"],
+            type=int,
+        )
+        parser.add_argument(
+            "-b",
+            "--sw_databases",
+            help="SmallWorld databases. Accepts multiple",
+            nargs="+",
+            default=cli_default_settings["sw_databases"],
+        )
+        parser.add_argument(
+            "-s",
+            "--suffix",
+            help="Suffix for output files",
+            default=cli_default_settings["suffix"],
+        )
+
+        parser.add_argument(
+            "-k",
+            "--top_mergers",
+            help="Max number of mergers to followup up on",
+            default=cli_default_settings["top_mergers"],
+            type=int,
+        )
+
+        parser.add_argument(
+            "-r",
+            "--ranking",
+            help="Ranking method",
+            default=cli_default_settings["ranking"],
+        )
+
         sw_search_parser.set_defaults(func=self.lab_sw_search)
 
     def gather(self, args: argparse.Namespace) -> Tuple[Laboratory, List[Chem.Mol]]:
@@ -48,22 +113,28 @@ class FragmensteinParserLaboratory:
         Igor.init_pyrosetta()
         # victor or wictor? copypasted from pipeline....
         choice = args.victor.lower()
-        if choice == 'victor':
+        if choice == "victor":
             from .victor import Victor
+
             Laboratory.Victor = Victor
-        elif choice == 'openvictor':
+        elif choice == "openvictor":
             from ..openmm.openvictor import OpenVictor
+
             Laboratory.Victor = OpenVictor
-        elif choice == 'wictor':
+        elif choice == "wictor":
             from ..faux_victors import Wictor
+
             Laboratory.Victor = Wictor
-        elif choice == 'quicktor':
+        elif choice == "quicktor":
             from ..faux_victors import Quicktor
+
             Laboratory.Victor = Quicktor
         else:
-            raise ValueError(f'Unknown victor: {choice}')
+            raise ValueError(f"Unknown victor: {choice}")
         # laboratory
-        lab = Laboratory(pdbblock=open(args.template).read(), run_plip=bool(args.run_plip))
+        lab = Laboratory(
+            pdbblock=open(args.template).read(), run_plip=bool(args.run_plip)
+        )
         with Chem.SDMolSupplier(args.input) as suppl:
             mols = list(suppl)
         return lab, mols
@@ -74,31 +145,48 @@ class FragmensteinParserLaboratory:
         self.write(args, combos)
 
     def lab_sw_search(self, args: argparse.Namespace) -> str:
-        lab, mols = self.gather(args)
-        
-        analogues: pd.DataFrame = lab.sw_search(
-            combinations, 
-            suffix,
-            sw_dist, 
-            sw_length,
-            sw_db,
-            top_mergers=1_000,
-            ranking=None, 
-            ranking_ascending=None,
-            sws=None,
-        )
 
-        # self.write(args, analogues)
+        from ..faux_victors import Wictor
+
+        Laboratory.Victor = Wictor
+        lab = Laboratory(pdbblock=open(args.template).read(), run_plip=False)
+
+        merges = PandasTools.LoadSDF(args.input)
+
+        for db in args.sw_databases:
+
+            settings = dict(
+                suffix=args.suffix,
+                sw_dist=args.sw_dist,
+                sw_length=args.sw_length,
+                sw_db=db,
+                top_mergers=args.top_mergers,
+                ranking=args.ranking,
+            )
+
+            analogues: pd.DataFrame = lab.sw_search(merges, **settings)
+
+            self.write(args, analogues)
 
     def write(self, args: argparse.Namespace, df: pd.DataFrame):
-        props = ['smiles', 'error', '∆∆G', '∆G_bound', '∆G_unbound', 'comRMSD',
-                 'N_constrained_atoms', 'N_unconstrained_atoms', 'runtime', 'regarded',
-                 'disregarded', 'LE', 'outcome',
-                 'percent_hybrid']
+        props = [
+            "smiles",
+            "error",
+            "∆∆G",
+            "∆G_bound",
+            "∆G_unbound",
+            "comRMSD",
+            "N_constrained_atoms",
+            "N_unconstrained_atoms",
+            "runtime",
+            "regarded",
+            "disregarded",
+            "LE",
+            "outcome",
+            "percent_hybrid",
+        ]
         df[props].to_csv(args.out_table)
-        PandasTools.WriteSDF(df, args.sdf_outfile,
-                             'minimized_mol',
-                             properties=props)
+        PandasTools.WriteSDF(df, args.sdf_outfile, "minimized_mol", properties=props)
 
     def fix_columns(self, df: pd.DataFrame, preferred_name: str, options: List[str]):
         if preferred_name not in df.columns:
@@ -109,24 +197,27 @@ class FragmensteinParserLaboratory:
                         df.rename(columns={alt: preferred_name}, inplace=True)
                         break
             else:
-                raise ValueError(f'No name column `{preferred_name}` (or the fallbacks {options}) in {df.columns}')
+                raise ValueError(
+                    f"No name column `{preferred_name}` (or the fallbacks {options}) in {df.columns}"
+                )
 
     def lab_place(self, args: argparse.Namespace) -> str:
         lab, hits = self.gather(args)
-        hitdex = {hit.GetProp('_Name'): hit for hit in hits}
+        hitdex = {hit.GetProp("_Name"): hit for hit in hits}
         # fix the input table
         intable = pd.read_csv(args.in_table)
         # name
-        self.fix_columns(intable, 'name', ['name', 'long name'])
-        self.fix_columns(intable, 'smiles', ['smiles', 'smile'])
-        self.fix_columns(intable, 'hit_names', ['hit_names', 'hit names', 'hits'])
+        self.fix_columns(intable, "name", ["name", "long name"])
+        self.fix_columns(intable, "smiles", ["smiles", "smile"])
+        self.fix_columns(intable, "hit_names", ["hit_names", "hit names", "hits"])
         try:
-            intable['hits'] = intable['hit_names'].apply(lambda x: [hitdex[n] for n in x.split()])
+            intable["hits"] = intable["hit_names"].apply(
+                lambda x: [hitdex[n] for n in x.split()]
+            )
         except KeyError as error:
-            raise KeyError(f'Could not find {error} in the input sdf file ({hitdex.keys()})')
+            raise KeyError(
+                f"Could not find {error} in the input sdf file ({hitdex.keys()})"
+            )
         # run
         placements = lab.place(intable, n_cores=args.cores)
         self.write(args, placements)
-
-
-
