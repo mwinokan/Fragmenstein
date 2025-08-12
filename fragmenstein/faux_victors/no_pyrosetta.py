@@ -120,3 +120,12 @@ class Wictor(Victor):
         self.energy_score['apo'] = dict(total_score=apo_E, unit='kcal/mol')
         self.ddG: float = holo_E - apo_E - ideal_E
         self.mrmsd: mRMSD = self._calculate_rmsd()
+
+
+class WictorNoPlace(Wictor):
+
+    def _calculate_combination_thermo(self):
+        # Don't actually do a placement
+
+    def _calculate_placement_thermo(self):
+        # Don't actually do a placement

@@ -20,7 +20,7 @@ To run in ``Laboratory`` class set the ``.Victor`` attribute to the desired ``Vi
 """
 
 from .mcs_victor import Mictor, MCSMerger
-from .no_pyrosetta import Wictor
+from .no_pyrosetta import Wictor, WictorNoPlace
 from .brics import AccountableBRICS
 from .others import FreeVictor, SingleVictor
 from .quick import Quicktor

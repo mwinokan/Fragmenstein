@@ -28,7 +28,7 @@ class FragmensteinParserLaboratory:
         )
         parser.add_argument(
             "--victor",
-            help="Which victor to use: Victor, OpenVictor or Wictor",
+            help="Which victor to use: Victor, OpenVictor, Wictor, or WictorNoPlace",
             default="Victor",
         )
 
@@ -125,6 +125,10 @@ class FragmensteinParserLaboratory:
             from ..faux_victors import Wictor
 
             Laboratory.Victor = Wictor
+        elif choice == "wictornoplace":
+            from ..faux_victors import WictorNoPlace
+
+            Laboratory.Victor = WictorNoPlace
         elif choice == "quicktor":
             from ..faux_victors import Quicktor
 
