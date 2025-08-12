@@ -126,6 +126,8 @@ class WictorNoPlace(Wictor):
 
     def _calculate_combination_thermo(self):
         # Don't actually do a placement
+        pass
 
     def _calculate_placement_thermo(self):
         # Don't actually do a placement
+        pass
