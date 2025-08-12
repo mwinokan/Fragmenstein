@@ -2,7 +2,7 @@ import argparse
 import pandas as pd
 from .base import FragmensteinParserBase, _add_common, set_verbose
 from rdkit import Chem
-from rdkit.Chem import PandasTools
+from rdkit.Chem import PandasTools, inchi
 from ..laboratory import Laboratory
 from ..igor import Igor
 from typing import List, Tuple
@@ -153,6 +153,13 @@ class FragmensteinParserLaboratory:
 
         merges = PandasTools.LoadSDF(args.input)
 
+        merges = merges[merges["outcome"] == "acceptable"]
+
+        if "name" not in merges.columns:
+            merges["name"] = merges["ROMol"].apply(inchi.MolToInchiKey)
+
+        # merges = merges.iloc[:10]
+
         Laboratory.Victor.journal.info(f'Number of input merges: {len(merges)}')
 
         for db in args.sw_databases:
@@ -167,8 +174,6 @@ class FragmensteinParserLaboratory:
             )
 
             analogues: pd.DataFrame = lab.sw_search(merges, **settings)
-
-            self.write(args, analogues)
 
     def write(self, args: argparse.Namespace, df: pd.DataFrame):
         props = [
@@ -187,6 +192,9 @@ class FragmensteinParserLaboratory:
             "outcome",
             "percent_hybrid",
         ]
+        for prop in props:
+            if prop not in df.columns:
+                print(prop, "NOT FOUND")
         df[props].to_csv(args.out_table)
         PandasTools.WriteSDF(df, args.sdf_outfile, "minimized_mol", properties=props)
 

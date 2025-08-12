@@ -165,11 +165,20 @@ class LabExtras:
         # query_index was added clientside to keep track!
         analogs['catalogue'] = sw_db
         analogs['query_name'] = analogs.query_index.map(queries.name.to_dict())
-        analogs['hits'] = analogs.query_index.map(queries.hit_mols.to_dict())
-        analogs = analogs.loc[~analogs.hits.isna()]  # not sure how this is possible, but can happen?
-        analogs['hit_names'] = analogs.hits.apply(lambda m: [mm.GetProp('_Name') for mm in m])
-        analogs['minimized_merger'] = analogs.query_index.map(queries.minimized_mol.to_dict())
-        analogs['unminimized_merger'] = analogs.query_index.map(queries.unminimized_mol.to_dict())
+
+        if "hit_mols" in queries.columns:
+            analogs['hits'] = analogs.query_index.map(queries.hit_mols.to_dict())
+            analogs = analogs.loc[~analogs.hits.isna()]  # not sure how this is possible, but can happen?
+            analogs['hit_names'] = analogs.hits.apply(lambda m: [mm.GetProp('_Name') for mm in m])
+
+        elif "regarded" in queries.columns:
+            analogs['hit_names'] = analogs.query_index.map(queries.regarded.to_dict())
+
+        if "minimized_mol" in queries.columns:
+            analogs['minimized_merger'] = analogs.query_index.map(queries.minimized_mol.to_dict())
+        if "minimized_mol" in queries.columns:
+            analogs['unminimized_merger'] = analogs.query_index.map(queries.unminimized_mol.to_dict())
+
         analogs['name'] = analogs['id'] + ':' + analogs['query_name']
         analogs['smiles'] = analogs.hitSmiles.str.split(expand=True)[0]
         analogs['custom_map'] = analogs.apply(cls.get_custom_map, axis=1)
