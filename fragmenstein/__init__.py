@@ -25,7 +25,7 @@ try:
     from .victor import Victor
 except ImportError as err:
     warn(f'Victor (pipeline) unavailable —{err}.', category=ImportWarning)
-except Exception as e:
+except Exception as err:
     warn(f'Victor (pipeline) unavailable —{err}.', category=ImportWarning)
 
 try:
